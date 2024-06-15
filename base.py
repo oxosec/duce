@@ -750,9 +750,7 @@ class Udemy:
                 "w",
                 encoding="utf-8",
             )
-        # self.scraped_links = [
-        #     "Myyaffiliate - How to earn on Tiktok 0 investment|:|https://www.udemy.com/course/5-ways-to-get-benefits-from-tiktok-work-from-home-passive/?couponCode=29ED67FDFCE43D2DCA92"
-        # ]
+
         index = 0
         total_courses = len(self.scraped_links)
         self.link = ""
@@ -767,84 +765,91 @@ class Udemy:
                 end=" ",
             )
 
-            course_id, self.link = self.get_course_id(self.link)
-            self.print(self.link, color="blue")
-            if course_id == "retry":
-                self.print("Retrying..", color="red")
-                continue
-            if course_id:
-                coupon_id = self.extract_course_coupon(self.link)
-                purchased, amount, coupon_valid, coupon_id = self.check_course(
-                    course_id, coupon_id
-                )
-
-                if not purchased:
-                    if coupon_id and coupon_valid:
-                        excluded = self.is_excluded(course_id, self.title)
-                        if excluded == "0":
-                            self.print("Retrying...\n", color="red")
-                            continue
-                        elif not excluded:
-                            success = self.free_checkout(coupon_id, course_id)
-                            if success == "retry":
-                                self.print("Retrying....", color="red")
-                                continue
-                            elif type(success) == str:
-                                self.print(f"{success}\n", color="light blue")
-                                slp = int(re.search(r"\d+", success).group(0))
-                                self.print(
-                                    f">>> Pausing script for {slp} seconds\n",
-                                    color="red",
-                                )
-                                time.sleep(slp)
-                                continue
-                            elif success:
-                                self.print(
-                                    "Successfully Enrolled To Course :)\n",
-                                    color="green",
-                                )
-                                self.successfully_enrolled_c += 1
-                                self.amount_saved_c += amount
-                                self.save_course(combo)
-                            elif not success:
-                                self.print("Coupon Expired :(\n", color="red")
-                                self.expired_c += 1
-                            time.sleep(3)
-                            # except:
-                            #     self.print("Expired Coupon", color="red")
-                            #     self.print()
-                            #     e_c += 1
-                        else:
-                            self.excluded_c += 1
-                    elif coupon_id and not coupon_valid:
-                        self.print(":( Coupon Expired\n", color="red")
-                        self.expired_c += 1
-                    elif not coupon_id:
-                        if self.settings["discounted_only"]:
-                            self.print("Free course excluded", color="light blue")
-                            self.excluded_c += 1
-                        else:
-                            success = self.free_subscribe(course_id)
-                            if success:
-                                self.print(
-                                    "Successfully Subscribed\n",
-                                    color="green",
-                                )
-                                self.successfully_enrolled_c += 1
-                                self.amount_saved_c += amount
-                                self.save_course(combo)
-                            else:
-                                self.print("COUPON MIGHT HAVE EXPIRED", color="red")
-                                self.expired_c += 1
-
-                elif purchased == "retry":
-                    self.print("Retrying.....\n", color="red")
+            try:
+                course_id, self.link = self.get_course_id(self.link)
+                self.print(self.link, color="blue")
+                if course_id == "retry":
+                    self.print("Retrying..", color="red")
+                    index += 1
                     continue
-                elif purchased:
-                    self.print(purchased + "\n", color="light blue")
-                    self.already_enrolled_c += 1
 
-            elif not course_id:
-                self.print("Course Expired", color="red")
-                self.expired_c += 1
+                if course_id:
+                    coupon_id = self.extract_course_coupon(self.link)
+                    purchased, amount, coupon_valid, coupon_id = self.check_course(
+                        course_id, coupon_id
+                    )
+
+                    if not purchased:
+                        if coupon_id and coupon_valid:
+                            excluded = self.is_excluded(course_id, self.title)
+                            if excluded == "0":
+                                self.print("Retrying...\n", color="red")
+                                index += 1
+                                continue
+                            elif not excluded:
+                                success = self.free_checkout(coupon_id, course_id)
+                                if success == "retry":
+                                    self.print("Retrying....", color="red")
+                                    index += 1
+                                    continue
+                                elif type(success) == str:
+                                    self.print(f"{success}\n", color="light blue")
+                                    slp = int(re.search(r"\d+", success).group(0))
+                                    self.print(
+                                        f">>> Pausing script for {slp} seconds\n",
+                                        color="red",
+                                    )
+                                    time.sleep(slp)
+                                    index += 1
+                                    continue
+                                elif success:
+                                    self.print(
+                                        "Successfully Enrolled To Course :)\n",
+                                        color="green",
+                                    )
+                                    self.successfully_enrolled_c += 1
+                                    self.amount_saved_c += amount
+                                    self.save_course(combo)
+                                elif not success:
+                                    self.print("Coupon Expired :(\n", color="red")
+                                    self.expired_c += 1
+                                time.sleep(3)
+                            else:
+                                self.excluded_c += 1
+                        elif coupon_id and not coupon_valid:
+                            self.print(":( Coupon Expired\n", color="red")
+                            self.expired_c += 1
+                        elif not coupon_id:
+                            if self.settings["discounted_only"]:
+                                self.print("Free course excluded", color="light blue")
+                                self.excluded_c += 1
+                            else:
+                                success = self.free_subscribe(course_id)
+                                if success:
+                                    self.print(
+                                        "Successfully Subscribed\n",
+                                        color="green",
+                                    )
+                                    self.successfully_enrolled_c += 1
+                                    self.amount_saved_c += amount
+                                    self.save_course(combo)
+                                else:
+                                    self.print("COUPON MIGHT HAVE EXPIRED", color="red")
+                                    self.expired_c += 1
+
+                    elif purchased == "retry":
+                        self.print("Retrying.....\n", color="red")
+                        index += 1
+                        continue
+                    elif purchased:
+                        self.print(purchased + "\n", color="light blue")
+                        self.already_enrolled_c += 1
+
+                elif not course_id:
+                    self.print("Course Expired", color="red")
+                    self.expired_c += 1
+
+            except Exception as e:
+                self.print(f"Error processing course: {str(e)}\n", color="red")
+
             index += 1
