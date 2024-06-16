@@ -5,6 +5,7 @@ from tqdm import tqdm
 from base import VERSION, LoginException, Scraper, Udemy, scraper_dict
 from colors import *
 
+
 def create_scraping_thread(site: str):
     code_name = scraper_dict[site]
 
@@ -38,6 +39,7 @@ def create_scraping_thread(site: str):
             pbar.update(final_progress - prev_progress)
         pbar.close()
 
+
 def scrape():
     try:
         udemy.scraped_links = scraper.get_scraped_courses(create_scraping_thread)
@@ -54,35 +56,36 @@ def scrape():
         e = traceback.format_exc()
         print("Error", e + f"\n\n{udemy.link}\n{udemy.title}" + f"|:|Unknown Error {VERSION}")
 
-udemy = Udemy("cli")
+
+udemy = Udemy()
 udemy.load_settings()
 login_title, main_title = udemy.check_for_update()
 if login_title.__contains__("Update"):
     print(by + fr + login_title)
 
-login_error = True
-while login_error:
-    try:
-        if udemy.settings["email"] and udemy.settings["password"]:
-            email, password = udemy.settings["email"], udemy.settings["password"]
-        else:
-            email = input("Email: ")
-            password = input("Password: ")
-        print(fb + "Trying to login")
-        udemy.manual_login(email, password)
-        udemy.get_session_info()
-        udemy.settings["email"], password = email, password
-        login_error = False
-    except LoginException as e:
-        print(fr + str(e))
-        udemy.settings["email"], password = "", ""
-    udemy.save_settings()
+emails = udemy.settings["email"].split('|')
+passwords = udemy.settings["password"].split('|')
 
-print(fg + f"Logged in as {udemy.display_name}")
-user_dumb = udemy.is_user_dumb()
-if user_dumb:
-    print(bw + fr + "What do you even expect to happen!")
-if not user_dumb:
-    scraper = Scraper(udemy.sites)
-    scrape()
-input()
+for email, password in zip(emails, passwords):
+    login_error = True
+    while login_error:
+        try:
+            if not email or not password:
+                raise LoginException("Missing email or password in settings.")
+            print(fb + "Trying to login")
+            udemy.manual_login(email, password)
+            udemy.get_session_info()
+            login_error = False
+        except LoginException as e:
+            print(fr + str(e))
+            exit(0)
+            break
+
+
+    print(fg + f"Logged in as {udemy.display_name}")
+    user_dumb = udemy.is_user_dumb()
+    if user_dumb:
+        print(bw + fr + "What do you even expect to happen!")
+    if not user_dumb:
+        scraper = Scraper(udemy.sites)
+        scrape()

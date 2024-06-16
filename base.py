@@ -17,7 +17,6 @@ from colors import *
 
 VERSION = "v2.1"
 
-
 scraper_dict: dict = {
     "Udemy Freebies": "uf",
     "Tutorial Bar": "tb",
@@ -41,7 +40,6 @@ class LoginException(Exception):
     Args:
         Exception (str): Exception Reason
     """
-
     pass
 
 
@@ -57,6 +55,7 @@ class RaisingThread(threading.Thread):
         super().join(timeout=timeout)
         if self._exc:
             raise self._exc
+
 
 class Scraper:
     """
@@ -328,8 +327,7 @@ class Scraper:
 
 
 class Udemy:
-    def __init__(self, interface: str):
-        self.interface = interface
+    def __init__(self):
         self.client = cloudscraper.CloudScraper()
 
     def print(self, content: str, color: str, **kargs):
@@ -340,34 +338,48 @@ class Udemy:
             "light blue": flb,
             "green": fg,
         }
-        if self.interface == "gui":
-            self.window["out"].print(content, text_color=color, **kargs)
-        else:
-            print(colours_dict[color] + content, **kargs)
+        print(colours_dict[color] + content, **kargs)
 
     def load_settings(self):
         try:
-            with open(f"duce-{self.interface}-settings.json") as f:
+            with open("duce-cli-settings.json") as f:
                 self.settings = json.load(f)
         except FileNotFoundError:
             self.settings = dict(
                 requests.get(
-                    f"https://raw.githubusercontent.com/techtanic/Discounted-Udemy-Course-Enroller/master/duce-{self.interface}-settings.json"
+                    "https://raw.githubusercontent.com/techtanic/Discounted-Udemy-Course-Enroller/master/duce-cli-settings.json"
                 ).json()
             )
-        if "Nepali" not in self.settings["languages"]:
-            self.settings["languages"]["Nepali"] = True  # v1.9
-        if "Urdu" not in self.settings["languages"]:
-            self.settings["languages"]["Urdu"] = True  # v1.9
-        self.settings["languages"] = dict(
-            sorted(self.settings["languages"].items(), key=lambda item: item[0])
-        )
+        
+        # Override settings with environment variables if they exist
+        self.settings["email"] = os.getenv('UDEMY_EMAIL', self.settings.get("email", ""))
+        self.settings["password"] = os.getenv('UDEMY_PASSWORD', self.settings.get("password", ""))
+
+        for key in self.settings["categories"]:
+            env_value = os.getenv(f'CATEGORIES_{key.upper().replace(" ", "_")}')
+            if env_value is not None:
+                self.settings["categories"][key] = env_value.lower() in ['true', '1', 'yes']
+
+        for key in self.settings["languages"]:
+            env_value = os.getenv(f'LANGUAGES_{key.upper().replace(" ", "_")}')
+            if env_value is not None:
+                self.settings["languages"][key] = env_value.lower() in ['true', '1', 'yes']
+
+        for key in self.settings["sites"]:
+            env_value = os.getenv(f'SITES_{key.upper().replace(" ", "_")}')
+            if env_value is not None:
+                self.settings["sites"][key] = env_value.lower() in ['true', '1', 'yes']
+
+        self.settings["min_rating"] = float(os.getenv('MIN_RATING', self.settings.get("min_rating", 0.0)))
+        self.settings["save_txt"] = os.getenv('SAVE_TXT', str(self.settings.get("save_txt", "true"))).lower() in ['true', '1', 'yes']
+        self.settings["discounted_only"] = os.getenv('DISCOUNTED_ONLY', str(self.settings.get("discounted_only", "false"))).lower() in ['true', '1', 'yes']
+
         self.save_settings()
         self.title_exclude = "\n".join(self.settings["title_exclude"])
         self.instructor_exclude = "\n".join(self.settings["instructor_exclude"])
 
     def save_settings(self):
-        with open(f"duce-{self.interface}-settings.json", "w") as f:
+        with open("duce-cli-settings.json", "w") as f:
             json.dump(self.settings, f, indent=4)
 
     def make_cookies(self, client_id: str, access_token: str, csrf_token: str):
@@ -528,8 +540,6 @@ class Udemy:
 
     def manual_login(self, email: str, password: str):
 
-        # s = cloudscraper.CloudScraper()
-
         s = requests.session()
         r = s.get(
             "https://www.udemy.com/join/signup-popup/",
@@ -545,7 +555,6 @@ class Udemy:
             "password": password,
         }
 
-        # ss = requests.session()
         s.cookies.update(r.cookies)
         s.headers.update(
             {
@@ -563,7 +572,6 @@ class Udemy:
                 "Cache-Control": "no-cache",
             }
         )
-        # r = s.get("https://www.udemy.com/join/login-popup/?response_type=json")
         s = cloudscraper.create_scraper(sess=s)
         r = s.post(
             "https://www.udemy.com/join/login-popup/?response_type=json",
@@ -588,21 +596,6 @@ class Udemy:
         Sets Client Session, currency and name
         """
         s = cloudscraper.CloudScraper()
-        # headers = {
-        #     "authorization": "Bearer " + self.cookie_dict["access_token"],
-        #     "accept": "application/json, text/plain, */*",
-        #     "x-requested-with": "XMLHttpRequest",
-        #     "x-forwarded-for": str(
-        #         ".".join(map(str, (random.randint(0, 255) for _ in range(4))))
-        #     ),
-        #     "x-udemy-authorization": "Bearer " + self.cookie_dict["access_token"],
-        #     "content-type": "application/json;charset=UTF-8",
-        #     "origin": "https://www.udemy.com",
-        #     "referer": "https://www.udemy.com/",
-        #     "dnt": "1",
-        #     "User-Agent": "okhttp/4.9.2 UdemyAndroid 8.9.2(499) (phone)",
-        # }
-
         headers = {
             "User-Agent": "okhttp/4.9.2 UdemyAndroid 8.9.2(499) (phone)",
             "Accept": "application/json, text/plain, */*",
@@ -680,10 +673,8 @@ class Udemy:
                 "method_id": "0",
                 "payment_vendor": "Free",
                 "payment_method": "free-method",
-            },
+            }
         }
-
-        # payload = json.dumps(payload)
 
         r = self.client.post(
             "https://www.udemy.com/payment/checkout-submit/",
@@ -731,9 +722,7 @@ class Udemy:
             os.fsync(self.txt_file.fileno())
 
     def enrol(self):
-
         self.remove_duplicates()
-        # main_window["pout"].update(0, max=len(self.scraped_links))
         (
             self.successfully_enrolled_c,
             self.already_enrolled_c,
@@ -853,3 +842,6 @@ class Udemy:
                 self.print(f"Error processing course: {str(e)}\n", color="red")
 
             index += 1
+
+        if self.settings["save_txt"]:
+            self.txt_file.close()
